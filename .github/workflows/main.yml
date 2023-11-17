@@ -1,0 +1,55 @@
+name: CI/CD pipeline app
+
+on:
+  push:
+    branches: [ querrimanualdeploy ]
+
+jobs:
+
+  Deploy:
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2 
+
+      - name: Create SSH directory and known_hosts file
+        run: |
+          mkdir -p ~/.ssh
+          touch ~/.ssh/known_hosts
+          chmod 0700 ~/.ssh
+          chmod 0600 ~/.ssh/known_hosts
+      
+      - name: Add host key to known_hosts
+        run: |
+          echo "$PRIVATE_KEY" > private_key 
+          chmod 0400 private_key
+          ssh-keyscan -H 18.217.85.146 >> ~/.ssh/known_hosts
+
+      - name: Deploy in dev EC2
+        env:
+            PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEYNEW  }}
+            # USERNAME : ${{ secrets.EC2_Dev_User  }}
+            # HOSTNAME : ${{ secrets.EC2_DEV_HOST  }}
+            # PASSPHRASE: ${{ secrets.SSH_PASSPHRASE }} 
+            
+        run: |
+          # Start the SSH agent
+          eval "$(ssh-agent -s)"
+
+          # Add the private key to the SSH agent
+          ssh-add private_key
+
+          ssh -T -i private_key -o "IdentitiesOnly=yes" -o "PasswordAuthentication=no" -o "BatchMode=yes" -o "PreferredAuthentications=publickey" ubuntu@ec2-18-217-85-146.us-east-2.compute.amazonaws.com
+          echo "SSH connection to EC2 established."          
+
+          # Now we have got the access to EC2 and can continue with the deployment.
+          cd /home/ubuntu/querripipeline/Querri
+          # git checkout querrimanualdeploy &&
+          # git fetch --all &&
+          # git reset --hard origin/querrimanualdeploy &&
+          # git pull origin querrimanualdeploy &&
+          # cd /home/ubuntu/querripipeline/Querri/awsdeployment/ &&
+          # ./userdata.sh &&
+          # cd /home/ubuntu/querripipeline/Querri &&
+          # docker-compose up -d --build
